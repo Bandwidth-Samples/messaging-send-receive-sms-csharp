@@ -21,9 +21,12 @@
 # Description
 Using a tool capable of making POST requests such as [Postman](https://www.postman.com/), send a `POST` request to the `/sendMessage` endpoint with a json body containing the `to` and `text` fields. The `to` field should be an array of E.164 formatted phone numbers to send the SMS to.
 
-```json
+```http
+POST /sendMessage
+Host: localhost:5001
+Content-Type: application/json
 {
-  "to": ["+19195551234"],
+  "to": "+19195551234",
   "text": "Hello World!"
 }
 ```
@@ -54,8 +57,9 @@ USER_NUMBER                          # The user's phone number involved with thi
 
 # Running the Application
 
-From the `sendReceiveMMS` directory, use the following command to run the application:
+Use the following command to run the application:
 ```sh
+cd SendReceiveSMS/
 dotnet run
 ```
 
