@@ -71,28 +71,18 @@ app.MapPost("/callbacks/outbound/messaging/status", async (HttpContext context) 
         requestBody = JsonConvert.DeserializeObject<List<object>>(body);
     }
 
-    string type = "";
-    // Access the "type" property of the first object in the list
-    try
-    {
-        type = (string)((dynamic)requestBody[0]).type;
-    }
-    catch
-    {
-        Console.WriteLine("Message type does not match endpoint. This endpoint is used for message status callbacks only.");
-    }
+    var type = (string)((dynamic)requestBody[0]).type;
     
-    // switch case statement
     switch (type)
     {
         case "message-sending":
-            Console.WriteLine("SMS message is sending.");
+            Console.WriteLine("message-sending type is only for MMS.");
             break;
         case "message-delivered":
             Console.WriteLine("Your message has been handed off to the Bandwidth's MMSC network, but has not been confirmed at the downstream carrier.");
             break;
         case "message-failed":
-            Console.WriteLine("For SMS and Group Messages, you will only receive this callback if you have enabled delivery receipts on SMS.");
+            Console.WriteLine("For MMS and Group Messages, you will only receive this callback if you have enabled delivery receipts on MMS.");
             break;
         default:
             Console.WriteLine("Message type does not match endpoint. This endpoint is used for message status callbacks only.");
