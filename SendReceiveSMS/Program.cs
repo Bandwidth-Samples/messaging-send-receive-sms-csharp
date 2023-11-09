@@ -1,70 +1,118 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Threading.Tasks;
-using Bandwidth.Standard;
-using Bandwidth.Standard.Http.Response;
-using Bandwidth.Standard.Messaging.Exceptions;
-using Bandwidth.Standard.Messaging.Models;
+using Bandwidth.Standard.Api;
+using Bandwidth.Standard.Client;
+using Bandwidth.Standard.Model;
+using Newtonsoft.Json;
 
-namespace SendReceiveSMS
+var builder = WebApplication.CreateBuilder(args);
+var app = builder.Build();
+
+string BW_USERNAME;
+string BW_PASSWORD;
+string BW_MESSAGING_APPLICATION_ID;
+string BW_ACCOUNT_ID;
+string BW_NUMBER;
+string USER_NUMBER;
+
+//Setting up environment variables
+try
 {
-    class Program
+    BW_USERNAME = Environment.GetEnvironmentVariable("BW_USERNAME");
+    BW_PASSWORD = Environment.GetEnvironmentVariable("BW_PASSWORD");
+    BW_MESSAGING_APPLICATION_ID = Environment.GetEnvironmentVariable("BW_MESSAGING_APPLICATION_ID");
+    BW_ACCOUNT_ID = Environment.GetEnvironmentVariable("BW_ACCOUNT_ID");
+    BW_NUMBER = Environment.GetEnvironmentVariable("BW_NUMBER");
+    USER_NUMBER = Environment.GetEnvironmentVariable("USER_NUMBER");
+}
+catch (Exception)
+{
+    Console.WriteLine("Please set the environmental variables defined in the README");
+    throw;
+}
+
+Configuration configuration = new Configuration();
+configuration.Username = BW_USERNAME;
+configuration.Password = BW_PASSWORD;
+
+app.MapPost("/sendMessage", async (HttpContext context) =>
     {
-        // Bandwidth provided messaging token.
-        private static readonly string Token = System.Environment.GetEnvironmentVariable("BW_USERNAME");
-        
-        // Bandwidth provided messaging secret.
-        private static readonly string Secret = System.Environment.GetEnvironmentVariable("BW_PASSWORD");
-
-        // Bandwidth provided application id.
-        private static readonly string ApplicationId = System.Environment.GetEnvironmentVariable("BW_MESSAGING_APPLICATION_ID");
-
-        // Bandwidth provided account id.
-        private static readonly string AccountId = System.Environment.GetEnvironmentVariable("BW_ACCOUNT_ID");
-
-        // The phone number to send the message from.
-        private static readonly string From = System.Environment.GetEnvironmentVariable("BW_NUMBER");
-        
-        // The phone number to send the message to.
-        private static readonly string To = System.Environment.GetEnvironmentVariable("USER_NUMBER");
-
-        // The text message to send to the "to" phone number.
-        private static readonly string Message = "Hello from Bandwidth";
-
-        static async Task Main(string[] args)
+        var requestBody = new Dictionary<string, string>();
+        using(var streamReader = new StreamReader(context.Request.Body))
         {
-            // Creates a Bandwidth client instance for creating messages.
-            var client = new BandwidthClient.Builder()
-                .Environment(Bandwidth.Standard.Environment.Production)
-                .MessagingBasicAuthCredentials(Token, Secret)
-                .Build();
+            var body = await streamReader.ReadToEndAsync();
+            requestBody = JsonConvert.DeserializeObject<Dictionary<string,string>>(body);
+        }
 
-            // A message request containing the required information to create a message using the client.
-            var request = new MessageRequest() {
-                ApplicationId = ApplicationId,
-                To = new List<string> { To },
-                From = From,
-                Text = Message
-            };
+        MessageRequest request = new MessageRequest(
+            applicationId: BW_MESSAGING_APPLICATION_ID,
+            to: new List<string> { requestBody["to"] },
+            from: BW_NUMBER,
+            text: requestBody["text"]
+        );
 
-            // Creates and sends an SMS message with the provided message request.
-            try
-            {
-                var response = await client.Messaging.APIController.CreateMessageAsync(AccountId, request);
-                Console.WriteLine($"Create message response status code '{response.StatusCode}'.");
-            }
-            catch (MessagingException e)
-            {
-                var body = ((HttpStringResponse)e.HttpContext.Response).Body;
-                Console.WriteLine($"A messaging exception has occurred. {e.Message}");
-                Console.WriteLine(body);
-                System.Environment.Exit(-1);
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine($"An unknown exception has occurred. {e.Message}");
-                System.Environment.Exit(-1);
-            }
+        MessagesApi apiInstance = new MessagesApi(configuration);
+        try
+        {
+            // Send a message
+            var result = await apiInstance.CreateMessageAsync(BW_ACCOUNT_ID, request);
+        }
+        catch (ApiException e)
+        {
+            Console.WriteLine("Exception when calling MessagesApi.CreateMessage: " + e.Message);
         }
     }
-}
+);
+
+app.MapPost("/callbacks/outbound/messaging/status", async (HttpContext context) =>
+{
+    var requestBody = new List<object>();
+    using(var streamReader = new StreamReader(context.Request.Body))
+    {
+        var body = await streamReader.ReadToEndAsync();
+        requestBody = JsonConvert.DeserializeObject<List<object>>(body);
+    }
+
+    var type = (string)((dynamic)requestBody[0]).type;
+    
+    switch (type)
+    {
+        case "message-sending":
+            Console.WriteLine("message-sending type is only for MMS.");
+            break;
+        case "message-delivered":
+            Console.WriteLine("Your message has been handed off to the Bandwidth's MMSC network, but has not been confirmed at the downstream carrier.");
+            break;
+        case "message-failed":
+            Console.WriteLine("For MMS and Group Messages, you will only receive this callback if you have enabled delivery receipts on MMS.");
+            break;
+        default:
+            Console.WriteLine("Message type does not match endpoint. This endpoint is used for message status callbacks only.");
+            break;
+    }
+});
+
+app.MapPost("/callbacks/inbound/messaging", async (HttpContext context) =>
+{
+    var requestBody = new List<object>();
+    using(var streamReader = new StreamReader(context.Request.Body))
+    {
+        var body = await streamReader.ReadToEndAsync();
+        requestBody = JsonConvert.DeserializeObject<List<object>>(body);
+    }
+
+    var type = (string)((dynamic)requestBody[0]).type;
+    
+    if(type.Equals("message-received"))
+    {
+        var from = (string)((dynamic)requestBody[0]).message.from;
+        var to = (string)((dynamic)requestBody[0]).message.to[0];
+        var text = (string)((dynamic)requestBody[0]).message.text;
+        Console.WriteLine($"Message received from '{from}' to '{to}' with text '{text}'.");
+    }
+    else
+    {
+        Console.WriteLine("Message type does not match endpoint. This endpoint is used for inbound messages only.");
+        Console.WriteLine("Outbound message callbacks should be sent to /callbacks/outbound/messaging.");
+    }
+});
+
+app.Run();
