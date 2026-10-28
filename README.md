@@ -1,5 +1,6 @@
-# Send and Receive SMS C#
-<a href="http://dev.bandwidth.com/docs/messaging/quickStart">
+# Messaging Send and Receive
+
+<a href="https://dev.bandwidth.com/docs/messaging/quickStart">
   <img src="./icon-messaging.svg" title="Messaging Quick Start Guide" alt="Messaging Quick Start Guide"/>
 </a>
 
@@ -7,8 +8,6 @@
 
 <!-- TOC -->
 
-- [Send and Receive SMS C#](#send-and-receive-sms-c)
-- [Table of Contents](#table-of-contents)
 - [Description](#description)
 - [Pre-Requisites](#pre-requisites)
 - [Environmental Variables](#environmental-variables)
@@ -19,23 +18,31 @@
 <!-- /TOC -->
 
 # Description
-Using a tool capable of making POST requests such as [Postman](https://www.postman.com/), send a `POST` request to the `/sendMessage` endpoint with a json body containing the `to` and `text` fields. The `to` field should be an array of E.164 formatted phone numbers to send the SMS to.
 
-```http
-POST /sendMessage
-Host: localhost:5001
-Content-Type: application/json
+This sample app sends and receives SMS and MMS messages.
+
+Using a tool capable of making POST requests such as [Postman](https://www.postman.com/), send a `POST` request to the `/messages` endpoint with a json body containing the `to` and `text` fields. The `to` field should be an E.164 formatted phone number.
+
+```json
 {
   "to": "+19195551234",
   "text": "Hello World!"
 }
 ```
 
-The example above will text the number `+19195551234` the words `Hello World!`.
+The example above will text the number `+19195551234` the words `Hello World!`. To send an MMS, add a `media` field with a list of media URLs:
 
-The other two endpoints are used for handling inbound and outbound webhooks from Bandwidth. In order to use the correct endpoints, you must check the "Use multiple callback URLs" box on the application page in Dashboard. Then in Dashboard, set the INBOUND CALLBACK to `/callbacks/inbound/messaging` and the STATUS CALLBACK to `/callbacks/outbound/messaging/status`. The same can be accomplished via the Dashboard API by setting InboundCallbackUrl and OutboundCallbackUrl respectively.
+```json
+{
+  "to": "+19195551234",
+  "text": "Hello World!",
+  "media": ["https://cdn2.thecatapi.com/images/MTY3ODIyMQ.jpg"]
+}
+```
 
-Inbound callbacks are sent notifying you of a received message on a Bandwidth number, this app prints the phone numbers involved, as well as the text received. Outbound callbacks are status updates for messages sent from a Bandwidth number, this app has a dedicated response for each type of status update.
+The other two endpoints are used for handling inbound and outbound webhooks from Bandwidth. In order to use the correct endpoints, you must check the "Use multiple callback URLs" box on the application page in Dashboard. Then in Dashboard, set the INBOUND CALLBACK to `/callbacks/inbound/messaging` and the STATUS CALLBACK to `/callbacks/outbound/messaging/status`. The same can be accomplished via the Dashboard API by setting `InboundCallbackUrl` and `OutboundCallbackUrl` respectively.
+
+Inbound callbacks are sent notifying you of a received message on a Bandwidth number. This app prints the phone numbers involved and the text received, and saves any media attached to the message to a `media` folder in the project. Outbound callbacks are status updates for messages sent from a Bandwidth number, this app has a dedicated response for each type of status update.
 
 # Pre-Requisites
 In order to use the Bandwidth API users need to set up the appropriate application at the [Bandwidth Dashboard](https://dashboard.bandwidth.com/) and create API tokens.
@@ -48,18 +55,18 @@ For more information about API credentials see our [Account Credentials](https:/
 The sample app uses the below environmental variables.
 ```sh
 BW_ACCOUNT_ID                        # Your Bandwidth Account Id
-BW_USERNAME                          # Your Bandwidth API Username
-BW_PASSWORD                          # Your Bandwidth API Password
-BW_MESSAGING_APPLICATION_ID          # Your Messaging Application Id created in the dashboard
+BW_CLIENT_ID                         # Your Bandwidth API OAuth Client Id
+BW_CLIENT_SECRET                     # Your Bandwidth API OAuth Client Secret
 BW_NUMBER                            # The Bandwidth phone number involved with this application
-USER_NUMBER                          # The user's phone number involved with this application
+BW_MESSAGING_APPLICATION_ID          # Your Messaging Application Id created in the dashboard
+LOCAL_PORT                           # The port number you wish to run the sample on
 ```
 
 # Running the Application
 
 Use the following command to run the application:
 ```sh
-cd SendReceiveSMS/
+cd SendReceive/
 dotnet run
 ```
 
@@ -74,12 +81,10 @@ Below are the callback paths:
 ## Ngrok
 
 A simple way to set up a local callback URL for testing is to use the free tool [ngrok](https://ngrok.com/).  
-After you have downloaded and installed `ngrok` run the following command to open a public tunnel to your port (in this case port 5001). 
+After you have downloaded and installed `ngrok` run the following command to open a public tunnel to your port (`$LOCAL_PORT`)
 
-```cmd
-ngrok http 5001
+```sh
+ngrok http $LOCAL_PORT
 ```
 
-You can view your public URL at `http://127.0.0.1:4040` after ngrok is running.  You can also view the status of the tunnel and requests/responses here.
-
-*Note: If you would like to change your port number feel free to do so. However, if you do change the port you will also need to change the number appended to the application URL in the `launchSettings.json` file located in `SendReceiveSMS/Properties/`*
+You can view your public URL at `http://127.0.0.1:4040` after ngrok is running.  You can also view the status of the tunnel and requests/responses here. Once your public ngrok url has been created, use it as the base of the callback URLs in the messaging application created in the [Pre-Requisites](#pre-requisites) section.

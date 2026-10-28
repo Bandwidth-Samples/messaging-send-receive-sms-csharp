@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.5.002.0
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SendReceiveSMS", "SendReceiveSMS\SendReceiveSMS.csproj", "{01B1C212-7387-478A-9853-7BA56CBF0F06}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SendReceive", "SendReceive\SendReceive.csproj", "{01B1C212-7387-478A-9853-7BA56CBF0F06}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Server", "Server\Server.csproj", "{DFEF43C7-199B-4FE7-B630-F62E52CCE3CF}"
 EndProject
